@@ -314,7 +314,70 @@ namespace gui::asset_list::techet
 				if (ImGui::TreeNode(pass, "pass %i", o))
 				{
 					ADD_SHADER(vertexShader, game::ASSET_TYPE_VERTEXSHADER);
-					DRAW_SUB_ASSET_PROPERTY_NAME(pass, "%s", vertexDecl);
+					ImGui::Text("vertexDecl: ");
+					ImGui::SameLine();
+
+					if (pass->vertexDecl)
+					{
+						if (ImGui::TreeNode(pass->vertexDecl, "%s", pass->vertexDecl->name))
+						{
+							const auto* decl = pass->vertexDecl;
+
+							ImGui::Text("streamCount: %u", decl->streamCount);
+							ImGui::Text("hasOptionalSource: %s", decl->hasOptionalSource ? "true" : "false");
+
+							ImGui::Separator();
+
+							if (ImGui::TreeNode("Stream Routing"))
+							{
+								ImGui::Columns(4, "routing");
+
+								ImGui::Text("Index"); ImGui::NextColumn();
+								ImGui::Text("Source"); ImGui::NextColumn();
+								ImGui::Text("Dest"); ImGui::NextColumn();
+								ImGui::Text("Mask"); ImGui::NextColumn();
+
+								ImGui::Separator();
+
+								for (int i = 0; i < 32; i++)
+								{
+									const auto& r = decl->routing.data[i];
+
+									// Skip completely empty entries if desired.
+									if (r.source == 0 && r.dest == 0 && r.mask == 0)
+										continue;
+
+									ImGui::Text("%d", i);              ImGui::NextColumn();
+									ImGui::Text("%u", r.source);       ImGui::NextColumn();
+									ImGui::Text("%u", r.dest);         ImGui::NextColumn();
+									ImGui::Text("0x%02X", r.mask);     ImGui::NextColumn();
+								}
+
+								ImGui::Columns(1);
+
+								ImGui::TreePop();
+							}
+
+							if (ImGui::TreeNode("Input Layouts"))
+							{
+								for (int i = 0; i < IM_ARRAYSIZE(decl->routing.decl); i++)
+								{
+									if (decl->routing.decl[i])
+									{
+										ImGui::Text("[%3d] %p", i, decl->routing.decl[i]);
+									}
+								}
+
+								ImGui::TreePop();
+							}
+
+							ImGui::TreePop();
+						}
+					}
+					else
+					{
+						ImGui::Text("null");
+					}
 					ADD_SHADER(hullShader, game::ASSET_TYPE_HULLSHADER);
 					ADD_SHADER(domainShader, game::ASSET_TYPE_DOMAINSHADER);
 					ADD_SHADER(pixelShader, game::ASSET_TYPE_PIXELSHADER);

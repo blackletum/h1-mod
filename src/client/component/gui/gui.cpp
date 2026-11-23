@@ -375,9 +375,14 @@ namespace gui
 		}, always);
 	}
 
+	bool InputS8(const char* label, char* v, int step, int step_fast, ImGuiInputTextFlags flags)
+	{
+		const char* format = (flags & ImGuiInputTextFlags_CharsHexadecimal) ? "%08X" : "%d";
+		return ImGui::InputScalar(label, ImGuiDataType_S8, (void*)v, (void*)(step > 0 ? &step : NULL), (void*)(step_fast > 0 ? &step_fast : NULL), format, flags);
+	}
+
 	bool InputU8(const char* label, unsigned char* v, int step, int step_fast, ImGuiInputTextFlags flags)
 	{
-		// Hexadecimal input provided as a convenience but the flag name is awkward. Typically you'd use InputText() to parse your own data, if you want to handle prefixes.
 		const char* format = (flags & ImGuiInputTextFlags_CharsHexadecimal) ? "%08X" : "%d";
 		return ImGui::InputScalar(label, ImGuiDataType_U8, (void*)v, (void*)(step > 0 ? &step : NULL), (void*)(step_fast > 0 ? &step_fast : NULL), format, flags);
 	}

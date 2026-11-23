@@ -114,13 +114,29 @@ namespace gsc
 				return itr->second;
 			}
 
+			static const auto mapname = game::Dvar_FindVar("mapname");
+
+			std::string name = real_name;
 			if (game::VirtualLobby_Loaded() && !force_load)
 			{
-				return nullptr;
+				name = "vlobby_scripts/" + real_name;
 			}
 
+			auto name_map = mapname->current.string + "/"s + real_name;
+
 			std::string source_buffer{};
-			if (!read_raw_script_file(real_name + ".gsc", &source_buffer) || source_buffer.empty())
+
+			const auto try_file = [&](const std::string& file)
+			{
+				if (!read_raw_script_file(file + ".gsc", &source_buffer) || source_buffer.empty())
+				{
+					return false;
+				}
+
+				return true;
+			};
+
+			if (!try_file(name_map) && !try_file(name))
 			{
 				return nullptr;
 			}

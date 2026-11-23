@@ -9,6 +9,7 @@
 namespace game
 {
 	using namespace database;
+	using namespace std;
 
 	// * scripting
 
@@ -1078,16 +1079,6 @@ namespace game
 		SV_LIVE_DROP_DISCONNECT = 0x1,
 	};
 
-	struct trace_t
-	{
-		float fraction;
-		float normal[3];
-		char __pad0[25];
-		bool allsolid;
-		bool startsolid;
-		char __pad1[0x2C]; // not correct
-	};
-
 	enum scriptType_e
 	{
 		SCRIPT_NONE = 0,
@@ -1275,6 +1266,12 @@ namespace game
 
 	namespace mp
 	{
+		struct EntHandle
+		{
+			uint16_t number;
+			uint16_t infoIndex;
+		};
+
 		struct cachedSnapshot_t
 		{
 			int archivedFrame;
@@ -1439,7 +1436,10 @@ namespace game
 			char __pad4[30];
 			char name[32]; // 18834
 			char __pad5[622];
-			int flags; // 19488 
+			int flags; // 19488
+			char __pad6[932];
+			float grenadeThrowSpeedScale;
+			float grenadeThrowSpeedUpScale;
 		}; // size = ?
 
 		static_assert(offsetof(gclient_s, ps.origin) == 120);
@@ -1448,6 +1448,8 @@ namespace game
 		static_assert(offsetof(gclient_s, team) == 18800);
 		static_assert(offsetof(gclient_s, name) == 18834);
 		static_assert(offsetof(gclient_s, flags) == 19488);
+		static_assert(offsetof(gclient_s, grenadeThrowSpeedScale) == 20424);
+		static_assert(offsetof(gclient_s, grenadeThrowSpeedUpScale) == 20428);
 
 		struct usercmd_s
 		{
@@ -1473,54 +1475,186 @@ namespace game
 		static_assert(offsetof(usercmd_s, forwardmove) == 28);
 		static_assert(offsetof(usercmd_s, rightmove) == 29);
 
-		struct EntityState
-		{
-			uint16_t number;
-		}; // size = ?
-
 		struct gagent_s
 		{
 			char __pad0[19184];
 		};
 
-#pragma pack(push, 1)
-		struct gentity_s
+		enum ModelType : std::int8_t
 		{
-			EntityState s;
-			char __pad0[106];
+			MODELTYPE_CAPSULE = 0x0,
+			MODELTYPE_CYLINDER = 0x1,
+			MODELTYPE_DISK = 0x2,
+			MODELTYPE_TRIGGER = 0x3,
+			MODELTYPE_BRUSH = 0x4,
+		};
+
+		struct LerpEntityStateAnonymous
+		{
+			int data[8];
+		};
+
+		union LerpEntityStateTypeUnion
+		{
+			LerpEntityStateAnonymous anonymous;
+		};
+
+		enum trType_t : std::int32_t
+		{
+			TR_STATIONARY = 0x0,
+			TR_INTERPOLATE = 0x1,
+			TR_LINEAR = 0x2,
+			TR_LINEAR_STOP = 0x3,
+			TR_SINE = 0x4,
+			TR_GRAVITY = 0x5,
+			TR_LOW_GRAVITY = 0x6,
+			TR_ACCELERATE = 0x7,
+			TR_DECELERATE = 0x8,
+			TR_FIRST_PHYSICS = 0x9,
+			TR_PHYSICS_SPAWN_BULLET = 0x9,
+			TR_PHYSICS_SPAWN_IMPULSE = 0xA,
+			TR_LAST_PHYSICS = 0xA,
+			TR_ANIMATED_MOVER = 0xB,
+			TR_FIRST_RAGDOLL = 0xC,
+			TR_RAGDOLL = 0xC,
+			TR_RAGDOLL_GRAVITY = 0xD,
+			TR_RAGDOLL_INTERPOLATE = 0xE,
+			TR_LAST_RAGDOLL = 0xE,
+			NUM_TRTYPES = 0xF,
+		};
+
+		struct trajectory_t
+		{
+			trType_t trType;
+			int trTime;
+			int trDuration;
 			vec3_t trBase;
 			vec3_t trDelta;
-			char __pad1[12];
-			vec3_t currentAngles;
-			char __pad2[102];
+		};
+
+		struct LerpEntityState
+		{
+			int eFlags;
+			trajectory_t pos;
+			trajectory_t apos;
+			LerpEntityStateTypeUnion u;
+		};
+
+		struct $BEFE9800A1314C6B12F8C3CE18A08083
+		{
+			unsigned __int32 iHeadIcon : 4;
+			unsigned __int32 iHeadIconTeam : 2;
+			unsigned __int32 hudOutlineInfo : 5;
+			unsigned __int32 padding : 21;
+		};
+
+		struct ClientOutlineData
+		{
+			unsigned int bits[4];
+		};
+
+		union HudData
+		{
+			$BEFE9800A1314C6B12F8C3CE18A08083 __s0;
+			unsigned int data;
+		};
+
+		struct animInfo_t
+		{
+			int animTime;
+			unsigned int animData;
+		};
+
+		struct entityState_s
+		{
+			uint16_t number;
+			uint16_t otherEntityNum;
+			uint16_t attackerEntityNum;
+			bool inAltWeaponMode;
+			char pad;
+			unsigned short loopSound;
+			uint8_t eType;
+			unsigned char surfType;
+			char _padding01[4];
+			union
+			{
+				int brushModel;
+				int triggerModel;
+				int xmodel;
+				int primaryLight;
+			} index;
+			HudData hudData;
+			int time2;
+			int unk;
+			int solid;
+			char _padding1[40];
+			Weapon weapon;
+			animInfo_t animInfo;
+			char _padding2[4];
+			LerpEntityState lerp;
+			char _padding3[16];
+			int partBits[8];
+			int clientMask[1];
+			int threatMask[1];
+		};
+
+		static_assert(sizeof(entityState_s) == 256);
+		static_assert(offsetof(entityState_s, hudData) == 20);
+
+		struct entityShared_t
+		{
+			char isLinked;
+			ModelType modelType;
 			char svFlags;
 			char isInUse;
 			Bounds box;
 			int contents;
 			Bounds absBox;
-			vec3_t origin;
-			char __pad3[12];
-			short owner;
-			char __pad4[6];
+			float currentOrigin[3];
+			float currentAngles[3];
+			EntHandle ownerNum;
+			int eventTime;
+		};
+
+		struct gentity_s
+		{
+			entityState_s s;
+			entityShared_t r;
 			gclient_s* client;
-			char __pad5[8];
+			void* turret;
 			gagent_s* agent;
-			char __pad6[36];
+			void* sentient;
+			char _pad2[16];
+			unsigned short model;
+			unsigned char physicsObject;
+			unsigned char takedamage;
+			unsigned char active;
+			unsigned char handler;
+			unsigned char team;
+			bool freeAfterEvent;
+			char __pad2_2[1];
 			scr_string_t classname;
 			scr_string_t script_classname;
 			scr_string_t script_linkName;
 			scr_string_t target;
 			scr_string_t targetname;
-			char _pad7[8];
+			unsigned int attachIgnoreCollision;
+			int spawnflags;
 			int flags;
-			char __pad8[300];
-		}; // size = 736
-#pragma pack(pop)
+			int eventTime;
+			int clipmask;
+			char __pad5[156];
+			unsigned short attachModelNames[20];
+			scr_string_t attachTagNames[16];
+			unsigned int variants[4];
+			int useCount;
+			int birthTime;
+			gentity_s* nextFree;
+		};
 
 		static_assert(sizeof(gentity_s) == 736);
-		static_assert(offsetof(gentity_s, svFlags) == 258);
-		static_assert(offsetof(gentity_s, box) == 260);
-		static_assert(offsetof(gentity_s, flags) == 432);
+		static_assert(offsetof(gentity_s, r.svFlags) == 258);
+		static_assert(offsetof(gentity_s, r.box) == 260);
 
 		struct snapshot_s
 		{
@@ -1642,8 +1776,8 @@ namespace game
 			unsigned char numModels;
 			char __pad1[199];
 			XModel* models;
-		}; 
-		
+		};
+
 		static_assert(offsetof(DObj, models) == 216);
 	}
 
@@ -1664,8 +1798,7 @@ namespace game
 		};
 
 		struct playerState_s
-		{
-		};
+		{};
 
 		struct XZone
 		{
@@ -1681,6 +1814,114 @@ namespace game
 	{
 		sp::playerState_s* sp;
 		mp::playerState_s* mp;
+	};
+
+	union gentity_s
+	{
+		sp::gentity_s* sp;
+		mp::gentity_s* mp;
+	};
+
+	enum TraceHitType : std::int32_t
+	{
+		TRACE_HITTYPE_NONE = 0x0,
+		TRACE_HITTYPE_ENTITY = 0x1,
+		TRACE_HITTYPE_DYNENT_MODEL = 0x2,
+		TRACE_HITTYPE_DYNENT_BRUSH = 0x3,
+		TRACE_HITTYPE_GLASS = 0x4,
+	};
+
+	enum hitLocation_t : std::uint16_t
+	{
+		HITLOC_NONE = 0x0,
+		HITLOC_HELMET = 0x1,
+		HITLOC_HEAD = 0x2,
+		HITLOC_NECK = 0x3,
+		HITLOC_TORSO_UPR = 0x4,
+		HITLOC_TORSO_LWR = 0x5,
+		HITLOC_R_ARM_UPR = 0x6,
+		HITLOC_L_ARM_UPR = 0x7,
+		HITLOC_R_ARM_LWR = 0x8,
+		HITLOC_L_ARM_LWR = 0x9,
+		HITLOC_R_HAND = 0xA,
+		HITLOC_L_HAND = 0xB,
+		HITLOC_R_LEG_UPR = 0xC,
+		HITLOC_L_LEG_UPR = 0xD,
+		HITLOC_R_LEG_LWR = 0xE,
+		HITLOC_L_LEG_LWR = 0xF,
+		HITLOC_R_FOOT = 0x10,
+		HITLOC_L_FOOT = 0x11,
+		HITLOC_GUN = 0x12,
+		HITLOC_SHIELD = 0x13,
+		HITLOC_ARMOR = 0x14,
+		HITLOC_SOFT = 0x15,
+		HITLOC_COUNT = 0x16,
+	};
+
+	enum meansOfDeath_t : std::int32_t
+	{
+		MOD_UNKNOWN = 0x0,
+		MOD_PISTOL_BULLET = 0x1,
+		MOD_RIFLE_BULLET = 0x2,
+		MOD_EXPLOSIVE_BULLET = 0x3,
+		MOD_GRENADE = 0x4,
+		MOD_GRENADE_SPLASH = 0x5,
+		MOD_PROJECTILE = 0x6,
+		MOD_PROJECTILE_SPLASH = 0x7,
+		MOD_MELEE = 0x8,
+		MOD_HEAD_SHOT = 0x9,
+		MOD_MELEE_DOG = 0xA,
+		MOD_MELEE_ALIEN = 0xB,
+		MOD_CRUSH = 0xC,
+		MOD_FALLING = 0xD,
+		MOD_SUICIDE = 0xE,
+		MOD_TRIGGER_HURT = 0xF,
+		MOD_EXPLOSIVE = 0x10,
+		MOD_IMPACT = 0x11,
+		MOD_NUM = 0x12,
+	};
+
+	struct trace_t
+	{
+		float fraction;
+		float normal[3];
+		int surfaceFlags;
+		int contents;
+		TraceHitType hitType;
+		unsigned __int16 hitId;
+		unsigned __int16 unused;
+		scr_string_t partName;
+		unsigned __int16 modelIndex;
+		unsigned __int16 partGroup;
+		unsigned __int8 localBoneIndex;
+		bool allsolid;
+		bool startsolid;
+		bool walkable;
+		bool getPenetration;
+		bool removePitchAndRollRotations;
+	};
+
+	struct BulletFireParams
+	{
+		short weaponEntIndex;
+		short ignoreEntIndex;
+		float damageMultiplier;
+		meansOfDeath_t methodOfDeath;
+		bool noRicochet;
+		float origStart[3];
+		float start[3];
+		float end[3];
+		float dir[3];
+	};
+
+	struct BulletTraceResults
+	{
+		trace_t trace;
+		gentity_s* hitEnt;
+		float hitPos[3];
+		bool ignoreHitEnt;
+		int depthSurfaceType;
+		int hitClientNum;
 	};
 
 	struct Glyph
@@ -1904,8 +2145,7 @@ namespace game
 		};
 
 		struct Metatable
-		{
-		};
+		{};
 
 		struct HashTable : ChunkHeader
 		{

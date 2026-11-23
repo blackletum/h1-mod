@@ -5,10 +5,12 @@
 #include "game/game.hpp"
 #include "game/dvars.hpp"
 
-#ifdef _DEBUG
 #include "console.hpp"
-#include "gui/gui.hpp"
 #include "d3d11.hpp"
+
+#ifdef _DEBUG
+#include "gui/gui.hpp"
+#endif
 
 #include <utils/string.hpp>
 #include <utils/hook.hpp>
@@ -18,6 +20,7 @@ namespace d3d11
 {
 	namespace
 	{
+#ifdef _DEBUG
 		game::dvar_t* d3d11_debug = nullptr;
 		game::dvar_t* d3d11_debug_level = nullptr;
 		game::dvar_t* d3d11_debug_legacy = nullptr;
@@ -1509,21 +1512,31 @@ namespace d3d11
 			utils::hook::set(vtable_entry, info_queue_add_message_stub);
 		}
 #endif
+#endif
 
 		HRESULT d3d11_create_device_stub(IDXGIAdapter* p_adapter, D3D_DRIVER_TYPE driver_type, HMODULE software,
 			UINT flags, const D3D_FEATURE_LEVEL* p_feature_levels, UINT feature_levels, UINT sdk_version,
 			ID3D11Device** pp_device, D3D_FEATURE_LEVEL* p_feature_level, ID3D11DeviceContext** pp_immediate_context)
 		{
+#ifdef _DEBUG
 			gui::shutdown_gui();
 
 			if (d3d11_debug->current.enabled)
 			{
 				flags |= D3D11_CREATE_DEVICE_DEBUG;
 			}
+#endif
+
+			// the game passes this flag, which renderdoc treats as "do not hook this device"
+			if (GetModuleHandleA("renderdoc.dll") != nullptr)
+			{
+				flags &= ~D3D11_CREATE_DEVICE_PREVENT_ALTERING_LAYER_SETTINGS_FROM_REGISTRY;
+			}
 
 			const auto result = D3D11CreateDevice(p_adapter, driver_type, software, flags, p_feature_levels,
 				feature_levels, sdk_version, pp_device, p_feature_level, pp_immediate_context);
 
+#ifdef _DEBUG
 			if (pp_device != nullptr && pp_immediate_context != nullptr)
 			{
 				gui::device = *pp_device;
@@ -1534,9 +1547,19 @@ namespace d3d11
 				hook_debug_info(*pp_device);
 #endif
 			}
+#endif
 
 			return result;
 		}
+
+#ifdef _DEBUG
+		template <typename T>
+		void set_debug_data(T* shader, const void* program, const unsigned int program_size, const char* name)
+		{
+			shader->SetPrivateData(guid_shader_bytecode, program_size, program);
+			shader->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(std::strlen(name)), name);
+		}
+#endif
 
 		utils::hook::detour create_pixel_shader_hook;
 		utils::hook::detour create_vertex_shader_hook;
@@ -1548,55 +1571,60 @@ namespace d3d11
 		{
 			create_pixel_shader_hook.invoke<void>(load_def, shader);
 
+#ifdef _DEBUG
 			if (shader->prog.ps != nullptr)
 			{
-				shader->prog.ps->SetPrivateData(guid_shader_bytecode, load_def->programSize, load_def->program);
-				shader->prog.ps->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(std::strlen(shader->name)), shader->name);
+				set_debug_data(shader->prog.ps, load_def->program, load_def->programSize, shader->name);
 			}
+#endif
 		}
 
 		void create_vertex_shader_stub(game::GfxVertexShaderLoadDef* load_def, game::MaterialVertexShader* shader)
 		{
 			create_vertex_shader_hook.invoke<void>(load_def, shader);
 			
+#ifdef _DEBUG
 			if (shader->prog.vs != nullptr)
 			{
-				shader->prog.vs->SetPrivateData(guid_shader_bytecode, load_def->programSize, load_def->program);
-				shader->prog.vs->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(std::strlen(shader->name)), shader->name);
+				set_debug_data(shader->prog.vs, load_def->program, load_def->programSize, shader->name);
 			}
+#endif
 		}
 
 		void create_domain_shader_stub(game::GfxDomainShaderLoadDef* load_def, game::MaterialDomainShader* shader)
 		{
 			create_domain_shader_hook.invoke<void>(load_def, shader);
 
+#ifdef _DEBUG
 			if (shader->prog.ds != nullptr)
 			{
-				shader->prog.ds->SetPrivateData(guid_shader_bytecode, load_def->programSize, load_def->program);
-				shader->prog.ds->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(std::strlen(shader->name)), shader->name);
+				set_debug_data(shader->prog.ds, load_def->program, load_def->programSize, shader->name);
 			}
+#endif
 		}
 
 		void create_hull_shader_stub(game::GfxHullShaderLoadDef* load_def, game::MaterialHullShader* shader)
 		{
 			create_hull_shader_hook.invoke<void>(load_def, shader);
 
+#ifdef _DEBUG
 			if (shader->prog.hs != nullptr)
 			{
-				shader->prog.hs->SetPrivateData(guid_shader_bytecode, load_def->programSize, load_def->program);
-				shader->prog.hs->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(std::strlen(shader->name)), shader->name);
+				set_debug_data(shader->prog.hs, load_def->program, load_def->programSize, shader->name);
 			}
+#endif
 		}
 
 		void create_compute_shader_stub(game::GfxComputeShaderLoadDef* load_def, game::ComputeShader* shader)
 		{
 			create_compute_shader_hook.invoke<void>(load_def, shader);
 
+#ifdef _DEBUG
 			if (shader->prog.cs != nullptr)
 			{
-				shader->prog.cs->SetPrivateData(guid_shader_bytecode, load_def->programSize, load_def->program);
-				shader->prog.cs->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(std::strlen(shader->name)), shader->name);
+				set_debug_data(shader->prog.cs, load_def->program, load_def->programSize, shader->name);
 			}
+#endif
 		}
 	}
 
@@ -1620,6 +1648,7 @@ namespace d3d11
 				return;
 			}
 
+#ifdef _DEBUG
 			constexpr const auto severity_level_count = D3D11_MESSAGE_SEVERITY_MESSAGE + 1;
 			static const char* severity_levels[severity_level_count + 1]{};
 			severity_levels[D3D11_MESSAGE_SEVERITY_CORRUPTION] = "corruption";
@@ -1639,6 +1668,13 @@ namespace d3d11
 			create_domain_shader_hook.create(SELECT_VALUE(0x56DA20_b, 0x690F80_b), create_domain_shader_stub);
 			create_hull_shader_hook.create(SELECT_VALUE(0x56DAB0_b, 0x691010_b), create_hull_shader_stub);
 			create_compute_shader_hook.create(SELECT_VALUE(0x56D8F0_b, 0x690E50_b), create_compute_shader_stub);
+#endif
+
+			if (GetModuleHandleA("renderdoc.dll") != nullptr)
+			{
+				// renderdoc blocks agsInit, and the game reads the uninitialized gpu info anyway and crashes (amd only)
+				utils::hook::set<std::uint32_t>(SELECT_VALUE(0x560C20_b, 0x688950_b), 0xC3C033); // xor eax, eax; ret
+			}
 		}
 
 		void pre_destroy() override
@@ -1649,4 +1685,3 @@ namespace d3d11
 }
 
 REGISTER_COMPONENT(d3d11::component)
-#endif

@@ -1048,8 +1048,8 @@ namespace fastfiles
 				reallocate_sound_pool();
 				reallocate_asset_pool_multiplier<game::ASSET_TYPE_XANIMPARTS, 2>();
 				reallocate_asset_pool_multiplier<game::ASSET_TYPE_LOADED_SOUND, 2>();
-				reallocate_asset_pool_multiplier<game::ASSET_TYPE_LOCALIZE_ENTRY, 2>();
 				reallocate_asset_pool_multiplier<game::ASSET_TYPE_REVERB_PRESET, 2>();
+				reallocate_asset_pool_multiplier<game::ASSET_TYPE_LOCALIZE_ENTRY, 2>();
 			}
 		}
 
@@ -1120,6 +1120,7 @@ namespace fastfiles
 
 			void reallocate_asset_pools()
 			{
+				reallocate_asset_pool_multiplier<game::ASSET_TYPE_REVERB_PRESET, 2>();
 				reallocate_asset_pool_multiplier<game::ASSET_TYPE_LOCALIZE_ENTRY, 2>();
 			}
 		}

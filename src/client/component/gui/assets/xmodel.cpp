@@ -155,7 +155,6 @@ namespace gui::asset_list::xmodel
 			}
 		}
 
-
 		int sum_verts_in_xmodels(game::XModel* asset, game::vec3_t mins, game::vec3_t maxs, game::vec3_t origin)
 		{
 			int vert_count = 0;
@@ -229,7 +228,7 @@ namespace gui::asset_list::xmodel
 			static bool flip_axis = false;
 			ImGui::Checkbox("flip axis", &flip_axis);
 
-			ImGui::SetNextItemOpen(false, ImGuiCond_FirstUseEver);
+			ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
 			if (ImGui::TreeNode("3d mesh"))
 			{
 				int vert_count = 0;
@@ -271,6 +270,15 @@ namespace gui::asset_list::xmodel
 					gui::copy_to_clipboard(asset->__name__); \
 				} \
 
+#define DRAW_SUB_ASSET_PROPERTY_NAME(__name__, __fmt__) \
+				ImGui::Text(#__name__ ": " __fmt__, asset->__name__ != nullptr ? asset->__name__->name : "null"); \
+
+#define DRAW_ASSET_PROPERTY_INPUT_S32(__name__) \
+				ImGui::InputInt(#__name__, &asset->__name__); \
+
+#define DRAW_ASSET_PROPERTY_INPUT_S8(__name__) \
+				InputS8(#__name__, &asset->__name__); \
+
 			DRAW_ASSET_PROPERTY_COPY(name);
 			DRAW_ASSET_PROPERTY(numRootBones, "%i");
 			DRAW_ASSET_PROPERTY(numsurfs, "%i");
@@ -279,9 +287,15 @@ namespace gui::asset_list::xmodel
 			DRAW_ASSET_PROPERTY(numCompositeModels, "%i");
 			DRAW_ASSET_PROPERTY(scale, "%f");
 			DRAW_ASSET_PROPERTY(radius, "%f");
-			DRAW_ASSET_PROPERTY(contents, "%i");
+			DRAW_ASSET_PROPERTY_INPUT_S32(contents);
+			DRAW_ASSET_PROPERTY(collLod, "%i");
+			DRAW_ASSET_PROPERTY_INPUT_S8(collLod);
+			DRAW_ASSET_PROPERTY(quantization, "%f");
 			ImGui::Text("bounds.midPoint: (%f, %f, %f)", asset->bounds.midPoint[0], asset->bounds.midPoint[1], asset->bounds.midPoint[2]);
 			ImGui::Text("bounds.halfSize: (%f, %f, %f)", asset->bounds.halfSize[0], asset->bounds.halfSize[1], asset->bounds.halfSize[2]);
+
+			DRAW_SUB_ASSET_PROPERTY_NAME(physPreset, "%s");
+			DRAW_SUB_ASSET_PROPERTY_NAME(physCollmap, "%s");
 
 			if (ImGui::TreeNode("bones"))
 			{

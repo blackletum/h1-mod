@@ -464,11 +464,28 @@ namespace renderer
 
 				r_use_custom_red_dot_brightness = dvars::register_bool("r_useCustomRedDotBrightness",
 					true, game::DVAR_FLAG_SAVED, "Use custom red-dot brightness values");
+
+				// double static model lighting slots (4096 -> 8192), models are skipped when full
+				utils::hook::set<std::uint8_t>(0x6964FA_b, 0xB9); // mov ecx, 2
+				utils::hook::set<std::uint32_t>(0x6964FB_b, 2);
+				utils::hook::nop(0x6964FF_b, 1);
+
+				// triple lit opaque static model surface buffers (camera regions 0 and 8), surfaces are skipped when full
+				utils::hook::set<std::uint16_t>(0x9348C0_b, 24576);
+				utils::hook::set<std::uint16_t>(0x9348E0_b, 24576);
+
+				// update reactive motion for all static models in range, not just visible ones (fixes stale shadow casters)
+				utils::hook::set<std::uint8_t>(0x64F560_b, 0xBD); // mov ebp, -1
+				utils::hook::set<std::uint32_t>(0x64F561_b, 0xFFFFFFFF);
+				utils::hook::nop(0x64F565_b, 3);
 			}
 
 			// patch r_preloadShaders crash at init
 			utils::hook::jump(SELECT_VALUE(0x5CF1F1_b, 0x6E76F1_b), utils::hook::assemble(r_preload_shaders_stub), true);
 			dvars::override::register_bool("r_preloadShaders", false, game::DVAR_FLAG_SAVED);
+
+			// remove image streaming upload throttle (sleeps value / 5 ms while the queue is full, default 50)
+			dvars::override::register_int("0xA616FEE4", 0, 0, 200, 0);
 
 #ifdef _DEBUG
 			if (!game::environment::is_mp())

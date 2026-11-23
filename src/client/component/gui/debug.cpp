@@ -638,7 +638,7 @@ namespace gui::debug
 			for (auto i = 0; i < *game::mp::num_entities; i++)
 			{
 				const auto entity = &game::mp::g_entities[i];
-				const auto origin = entity->origin;
+				const auto origin = entity->r.currentOrigin;
 
 				const auto distance = distance_2d(entity_bound_settings.camera, origin);
 				const auto classname = game::SL_ConvertToString(entity->script_classname);
@@ -661,8 +661,8 @@ namespace gui::debug
 					{
 					case object_type::circle:
 					{
-						const auto radius = entity->box.halfSize[0];
-						const auto height = entity->box.halfSize[2] * 2.f;
+						const auto radius = entity->r.box.halfSize[0];
+						const auto height = entity->r.box.halfSize[2] * 2.f;
 
 						draw_cylinder(origin, radius, height, entity_bound_settings.point_count,
 							e.color.data(), entity_bound_settings.mesh_thickness, entity_bound_settings.mesh_only);
@@ -671,7 +671,7 @@ namespace gui::debug
 					case object_type::cube:
 					default:
 					{
-						draw_rectangular_prism(origin, entity->box, e.color.data(),
+						draw_rectangular_prism(origin, entity->r.box, e.color.data(),
 							entity_bound_settings.mesh_thickness, entity_bound_settings.mesh_only);
 						break;
 					}

@@ -240,13 +240,17 @@ editandcontinue "Off"
 warnings "Extra"
 characterset "ASCII"
 
-disablewarnings {"5321"}
+disablewarnings {"5321", "4875"}
 
 if os.getenv("CI") then
 	defines {"CI"}
 end
 
-flags {"NoIncrementalLink", "NoMinimalRebuild", "MultiProcessorCompile", "No64BitChecks"}
+incrementallink "Off"
+minimalrebuild "Off"
+multiprocessorcompile "On"
+omitframepointer "On"
+enable64bitchecks "Off"
 
 filter "platforms:x64"
 	defines {"_WINDOWS", "WIN32"}
@@ -316,6 +320,15 @@ end
 
 if os.getenv("COMPUTERNAME") == "DESKTOP-JDO25VF" then
 	targetdir "D:\\SteamLibrary\\steamapps\\common\\Call of Duty Modern Warfare Remastered"
+end
+
+local COMPUTER_NAME = os.getenv("COMPUTERNAME")
+if COMPUTER_NAME == "JOEL-PC" then
+	debugdir "D:\\Games\\PC\\H1"
+	debugcommand "D:\\Games\\PC\\H1\\$(TargetName)$(TargetExt)"
+	postbuildcommands {
+		"copy /y \"$(OutDir)$(TargetName)$(TargetExt)\" \"D:\\Games\\PC\\H1\\$(TargetName)$(TargetExt)\"",
+	}
 end
 
 if _OPTIONS["debug-dir"] then

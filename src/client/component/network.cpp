@@ -121,7 +121,7 @@ namespace network
 
 			u_long arg = 1;
 			ioctlsocket(sock, FIONBIO, &arg);
-			char optval[4] = {1};
+			char optval[4] = { 1 };
 			setsockopt(sock, 0xFFFF, 32, optval, 4);
 
 			if (bind(sock, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != -1)
@@ -136,6 +136,20 @@ namespace network
 		void* memmove_stub(void* dst, void* src, size_t size)
 		{
 			return std::memmove(dst, src, std::min(size, 1262ull));
+		}
+
+		utils::hook::detour ncs_process_ncs_map_hook;
+		int ncs_process_ncs_map_stub(game::NetConstStrings* asset, int a2)
+		{
+			const auto res = ncs_process_ncs_map_hook.invoke<int>(asset, a2);
+			if (res != 1)
+			{
+				const auto count = game::s_netConstStringMaps[asset->stringType].ncsCount;
+				const auto max = game::s_oldConfigStringToNetStringMap[asset->stringType].csMax - 1;
+				console::error("ncs overflow: %i + %i > %i (%s, type: %i)\n", count, asset->entryCount, max, asset->name, asset->stringType);
+			}
+
+			return res;
 		}
 	}
 
@@ -316,6 +330,8 @@ namespace network
 
 				// patch buffer overflow
 				utils::hook::call(0x4F19A7_b, memmove_stub); // NET_DeferPacketToClient
+
+				ncs_process_ncs_map_hook.create(0x2B1A10_b, ncs_process_ncs_map_stub);
 			}
 		}
 	};
